@@ -25,6 +25,10 @@ bool AuthMiddleware::needsAuth(const std::string& url) {
 }
 
 void AuthMiddleware::before_handle(crow::request& req, crow::response& res, context& ctx) {
+    if (req.method == crow::HTTPMethod::Options) {
+        return;
+    }
+
     if (!needsAuth(req.url)) {
         return;
     }
@@ -56,4 +60,3 @@ void AuthMiddleware::before_handle(crow::request& req, crow::response& res, cont
 }
 
 }  // namespace app::auth
-

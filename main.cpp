@@ -45,10 +45,21 @@ int main() {
     app::auth::AuthMiddleware::configure(jwt_service);
 
     app::HttpApp app;
+    auto& cors = app.get_middleware<crow::CORSHandler>();
+    cors.global()
+        .origin("*")
+        .headers("*")
+        .methods(crow::HTTPMethod::Get,
+                 crow::HTTPMethod::Post,
+                 crow::HTTPMethod::Put,
+                 crow::HTTPMethod::Delete,
+                 crow::HTTPMethod::Patch,
+                 crow::HTTPMethod::Head,
+                 crow::HTTPMethod::Options);
+
     app::routes::registerSystemRoutes(app, auth_service);
     app::routes::registerAuthRoutes(app, auth_service);
 
     app.port(getPort()).multithreaded().run();
     return 0;
 }
-
