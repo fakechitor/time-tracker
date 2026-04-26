@@ -270,6 +270,70 @@ void Postgres::ensureSchema() const {
             &error)) {
         throw std::runtime_error("Failed to ensure tasks index schema: " + error);
     }
+
+    if (!execute(
+            R"SQL(
+        CREATE TABLE IF NOT EXISTS time_entries (
+            id TEXT PRIMARY KEY,
+            task_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            started_at TIMESTAMPTZ NOT NULL,
+            ended_at TIMESTAMPTZ NOT NULL,
+            duration_sec DOUBLE PRECISION NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            CONSTRAINT fk_time_entries_task FOREIGN KEY (task_id) REFERENCES tasks (id) ON DELETE CASCADE,
+            CONSTRAINT fk_time_entries_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+            CONSTRAINT chk_time_entries_time_range CHECK (ended_at >= started_at)
+        )
+    )SQL",
+            &error)) {
+        throw std::runtime_error("Failed to ensure time_entries schema: " + error);
+    }
+
+    if (!execute(
+            R"SQL(
+        CREATE INDEX IF NOT EXISTS idx_time_entries_user_started_at ON time_entries (user_id, started_at DESC)
+    )SQL",
+            &error)) {
+        throw std::runtime_error("Failed to ensure time_entries user index schema: " + error);
+    }
+
+    if (!execute(
+            R"SQL(
+        CREATE INDEX IF NOT EXISTS idx_time_entries_task_started_at ON time_entries (task_id, started_at DESC)
+    )SQL",
+            &error)) {
+        throw std::runtime_error("Failed to ensure time_entries task index schema: " + error);
+    }
+
+    if (!execute(
+            R"SQL(
+        CREATE TABLE IF NOT EXISTS timer_sessions (
+            id TEXT PRIMARY KEY,
+            task_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            started_at TIMESTAMPTZ NOT NULL,
+            stopped_at TIMESTAMPTZ,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            CONSTRAINT fk_timer_sessions_task FOREIGN KEY (task_id) REFERENCES tasks (id) ON DELETE CASCADE,
+            CONSTRAINT fk_timer_sessions_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        )
+    )SQL",
+            &error)) {
+        throw std::runtime_error("Failed to ensure timer_sessions schema: " + error);
+    }
+
+    if (!execute(
+            R"SQL(
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_timer_sessions_single_active_per_user
+        ON timer_sessions (user_id) WHERE is_active = TRUE
+    )SQL",
+            &error)) {
+        throw std::runtime_error("Failed to ensure timer_sessions active index schema: " + error);
+    }
 }
 
 bool Postgres::ping(std::string* error) const {

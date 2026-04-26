@@ -15,8 +15,16 @@
 #include "app/routes/auth_routes.h"
 #include "app/routes/system_routes.h"
 #include "app/routes/task_routes.h"
+#include "app/routes/time_entry_routes.h"
+#include "app/routes/timer_routes.h"
+#include "app/routes/report_routes.h"
+#include "app/reports/report_service.h"
 #include "app/tasks/task_service.h"
 #include "app/tasks/task_store.h"
+#include "app/time_entries/time_entry_service.h"
+#include "app/time_entries/time_entry_store.h"
+#include "app/timers/timer_service.h"
+#include "app/timers/timer_store.h"
 
 namespace {
 
@@ -139,6 +147,11 @@ int main() {
     app::auth::AuthService auth_service(*user_store, *jwt_service);
     app::tasks::TaskStore task_store(postgres);
     app::tasks::TaskService task_service(task_store);
+    app::time_entries::TimeEntryStore time_entry_store(postgres);
+    app::time_entries::TimeEntryService time_entry_service(time_entry_store);
+    app::timers::TimerStore timer_store(postgres);
+    app::timers::TimerService timer_service(timer_store, task_store, time_entry_store);
+    app::reports::ReportService report_service(postgres);
     app::auth::AuthMiddleware::configure(jwt_service);
 
     app::HttpApp app;
@@ -157,6 +170,9 @@ int main() {
     app::routes::registerSystemRoutes(app, auth_service, *postgres);
     app::routes::registerAuthRoutes(app, auth_service);
     app::routes::registerTaskRoutes(app, task_service);
+    app::routes::registerTimeEntryRoutes(app, time_entry_service);
+    app::routes::registerTimerRoutes(app, timer_service);
+    app::routes::registerReportRoutes(app, report_service);
 
     app.port(getPort()).multithreaded().run();
     return 0;
