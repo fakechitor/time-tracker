@@ -46,6 +46,7 @@ add_executable(time_tracker_app
         src/app/auth/jwt_service.cpp
         src/app/auth/auth_service.cpp
         src/app/auth/auth_middleware.cpp
+        src/app/db/postgres.cpp
         src/app/routes/auth_routes.cpp
         src/app/routes/system_routes.cpp
 )
