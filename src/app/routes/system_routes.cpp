@@ -4,7 +4,7 @@
 
 namespace app::routes {
 
-void registerSystemRoutes(HttpApp& app, auth::AuthService& auth_service) {
+void registerSystemRoutes(HttpApp& app, auth::AuthService& auth_service, db::Postgres& postgres) {
     CROW_ROUTE(app, "/")([] {
         crow::json::wvalue body;
         body["name"] = "time-tracker-app";
@@ -12,9 +12,18 @@ void registerSystemRoutes(HttpApp& app, auth::AuthService& auth_service) {
         return http::json(200, std::move(body));
     });
 
-    CROW_ROUTE(app, "/health")([] {
+    CROW_ROUTE(app, "/health")
+    ([&postgres] {
         crow::json::wvalue body;
+        std::string error;
+        if (!postgres.ping(&error)) {
+            body["status"] = "error";
+            body["db"] = "unreachable";
+            body["details"] = error;
+            return http::json(503, std::move(body));
+        }
         body["status"] = "ok";
+        body["db"] = "up";
         return http::json(200, std::move(body));
     });
 
@@ -35,4 +44,3 @@ void registerSystemRoutes(HttpApp& app, auth::AuthService& auth_service) {
 }
 
 }  // namespace app::routes
-
