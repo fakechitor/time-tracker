@@ -244,6 +244,32 @@ void Postgres::ensureSchema() const {
             &error)) {
         throw std::runtime_error("Failed to ensure schema: " + error);
     }
+
+    if (!execute(
+            R"SQL(
+        CREATE TABLE IF NOT EXISTS tasks (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            status TEXT NOT NULL DEFAULT 'active',
+            total_time DOUBLE PRECISION NOT NULL DEFAULT 0,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            CONSTRAINT fk_tasks_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+        )
+    )SQL",
+            &error)) {
+        throw std::runtime_error("Failed to ensure schema: " + error);
+    }
+
+    if (!execute(
+            R"SQL(
+        CREATE INDEX IF NOT EXISTS idx_tasks_user_created_at ON tasks (user_id, created_at DESC)
+    )SQL",
+            &error)) {
+        throw std::runtime_error("Failed to ensure tasks index schema: " + error);
+    }
 }
 
 bool Postgres::ping(std::string* error) const {
@@ -348,6 +374,53 @@ std::optional<Postgres::Row> Postgres::queryOne(const std::string& sql, std::str
 
     libpq().PQclear(result);
     return row;
+}
+
+std::vector<Postgres::Row> Postgres::queryAll(const std::string& sql, std::string* error) const {
+    ensureLoaded();
+    ConnectionHandle handle(connection_string_);
+    if (handle.conn == nullptr || libpq().PQstatus(handle.conn) != CONNECTION_OK) {
+        if (error != nullptr) {
+            *error = handle.conn == nullptr ? "failed to open connection" : connError(handle.conn);
+        }
+        return {};
+    }
+
+    PGresult* result = libpq().PQexec(handle.conn, sql.c_str());
+    if (result == nullptr) {
+        if (error != nullptr) {
+            *error = connError(handle.conn);
+        }
+        return {};
+    }
+
+    const auto status = libpq().PQresultStatus(result);
+    if (status != PGRES_TUPLES_OK) {
+        if (error != nullptr) {
+            *error = connError(handle.conn);
+        }
+        libpq().PQclear(result);
+        return {};
+    }
+
+    std::vector<Row> rows;
+    const int tuples = libpq().PQntuples(result);
+    const int fields = libpq().PQnfields(result);
+    rows.reserve(static_cast<std::size_t>(tuples));
+    for (int r = 0; r < tuples; ++r) {
+        Row row;
+        for (int c = 0; c < fields; ++c) {
+            const char* name = libpq().PQfname(result, c);
+            const char* value = libpq().PQgetvalue(result, r, c);
+            if (name != nullptr) {
+                row.fields[name] = value != nullptr ? value : "";
+            }
+        }
+        rows.push_back(std::move(row));
+    }
+
+    libpq().PQclear(result);
+    return rows;
 }
 
 std::string Postgres::escapeLiteral(std::string value) const {

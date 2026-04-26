@@ -3,6 +3,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace app::db {
 
@@ -31,6 +32,7 @@ public:
     [[nodiscard]] const std::string& connectionString() const;
     [[nodiscard]] bool execute(const std::string& sql, std::string* error = nullptr) const;
     [[nodiscard]] std::optional<Row> queryOne(const std::string& sql, std::string* error = nullptr) const;
+    [[nodiscard]] std::vector<Row> queryAll(const std::string& sql, std::string* error = nullptr) const;
     [[nodiscard]] std::string escapeLiteral(std::string value) const;
 
 private:

@@ -14,6 +14,9 @@
 #include "app/db/postgres.h"
 #include "app/routes/auth_routes.h"
 #include "app/routes/system_routes.h"
+#include "app/routes/task_routes.h"
+#include "app/tasks/task_service.h"
+#include "app/tasks/task_store.h"
 
 namespace {
 
@@ -134,6 +137,8 @@ int main() {
         7 * 24 * 60 * 60);
 
     app::auth::AuthService auth_service(*user_store, *jwt_service);
+    app::tasks::TaskStore task_store(postgres);
+    app::tasks::TaskService task_service(task_store);
     app::auth::AuthMiddleware::configure(jwt_service);
 
     app::HttpApp app;
@@ -151,6 +156,7 @@ int main() {
 
     app::routes::registerSystemRoutes(app, auth_service, *postgres);
     app::routes::registerAuthRoutes(app, auth_service);
+    app::routes::registerTaskRoutes(app, task_service);
 
     app.port(getPort()).multithreaded().run();
     return 0;

@@ -47,8 +47,11 @@ add_executable(time_tracker_app
         src/app/auth/auth_service.cpp
         src/app/auth/auth_middleware.cpp
         src/app/db/postgres.cpp
+        src/app/tasks/task_store.cpp
+        src/app/tasks/task_service.cpp
         src/app/routes/auth_routes.cpp
         src/app/routes/system_routes.cpp
+        src/app/routes/task_routes.cpp
 )
 
 target_link_libraries(time_tracker_app PRIVATE Crow::Crow)

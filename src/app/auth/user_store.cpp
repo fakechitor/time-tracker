@@ -1,5 +1,6 @@
 #include "app/auth/user_store.h"
 
+#include <chrono>
 #include <stdexcept>
 #include <utility>
 
@@ -75,7 +76,10 @@ User UserStore::create(std::string username, std::string email, std::string pass
 std::string UserStore::generateUserId() {
     std::lock_guard<std::mutex> lock(mutex_);
     ++sequence_;
-    return "user-" + std::to_string(sequence_);
+    const auto now = std::chrono::duration_cast<std::chrono::microseconds>(
+                         std::chrono::system_clock::now().time_since_epoch())
+                         .count();
+    return "user-" + std::to_string(now) + "-" + std::to_string(sequence_);
 }
 
 }  // namespace app::auth
